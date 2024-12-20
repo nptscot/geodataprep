@@ -1,0 +1,115 @@
+# Simplified road network data: open_roads_scotland.geojson
+```{r}
+simplified_roads = sf::st_read("data/open_roads_scotland.geojson") |> sf::st_transform(crs = 27700)
+```
+
+# Scotland region and local authority boundaries
+```{r}
+lads = sf::st_read("data/la_regions_scotland_bfe_simplified_2023.geojson")  |> sf::st_transform(crs = 27700)
+# [1] "LAD23CD"  "LAD23NM"  "Region"   "geometry"
+```
+
+lads$Region
+[1] "Tayside, Central and Fife" "Scotland South"
+[3] "Glasgow and Strathclyde"   "Edinburgh and Lothians"
+[5] "Highlands and Islands"     "Aberdeen and North East"
+
+lads$LAD23NM
+ [1] "Clackmannanshire"      "Dumfries and Galloway" "East Ayrshire"        
+ [4] "East Lothian"          "East Renfrewshire"     "Na h-Eileanan Siar"
+ [7] "Falkirk"               "Highland"              "Inverclyde"
+[10] "Midlothian"            "Moray"                 "North Ayrshire"
+[13] "Orkney Islands"        "Scottish Borders"      "Shetland Islands"
+[16] "South Ayrshire"        "South Lanarkshire"     "Stirling"
+[19] "Aberdeen City"         "Aberdeenshire"         "Argyll and Bute"
+[22] "City of Edinburgh"     "Renfrewshire"          "West Dunbartonshire"
+[25] "West Lothian"          "Angus"                 "Dundee City"
+[28] "East Dunbartonshire"   "Fife"                  "Perth and Kinross"
+[31] "Glasgow City"          "North Lanarkshire"
+
+# MasterMap data can be downloaded from https://digimap.edina.ac.uk/
+Ordnance Survey Tab -> OS Digimap -> log in with organisation -> Download Data -> OS MasterMap -> Select layers (e.g. Topography or Highways Road)
+
+The folloing code can be used to read the data as save as Rds file.
+```{r}
+#remotes::install_github("acteng/mastermapr")
+directory = "data/MasterMap Highways Network_roads_5779840"
+system.time({
+  mm_data = mastermapr::mm_read(directory, pattern = "RoadLink", n_files = Inf) 
+})
+saveRDS(mm_data, "data/mm_data_RoadLink.Rds")
+mm_data_2d = sf::st_zm(mm_data)
+list_cols = sapply(mm_data_2d, is.list)
+mm_data_list = mm_data_2d[, !list_cols]
+mm_data_scot = mm_data_list[st_union(lads), , op = st_intersects]
+sf::st_write(mm_data_scot, "data/mm_data_RoadLink_Scotland.geojson")
+```
+
+The MasterMap Roadlink data contains the following columns:
+
+[1] "gml_id" [2] "identifier" [3] "beginLifespanVersion" [4] "localId" [5] "namespace" [6] "fictitious" [7] "validFrom" [8] "reasonForChange" [9] "roadClassification" [10] "routeHierarchy" [11] "formOfWay" [12] "trunkRoad" [13] "primaryRoute" [14] "operationalState" [15] "provenance" [16] "length" [17] "length_uom" [18] "matchStatus" [19] "startGradeSeparation" [20] "endGradeSeparation" [21] "averageWidth" [22] "averageWidth_uom" [23] "minimumWidth" [24] "minimumWidth_uom" [25] "confidenceLevel" [26] "inDirection" [27] "inDirection_uom" [28] "inOppositeDirection" [29] "inOppositeDirection_uom" [30] "cycleFacility" [31] "wholeLink" [32] "roadStructure" [33] "roadName" [34] "alternateIdentifier|ThematicIdentifier|identifier" [35] "identifierScheme" [36] "alternateName" [37] "roadClassificationNumber" [38] "centrelineGeometry"
+
+# OSM data can be downloaded using osmactive package
+
+```{r}
+library(osmactive)
+osm_national = get_travel_network("Scotland")
+osm_national = osm_national |> sf::st_transform(crs = 27700)
+```
+
+The OSM data contains the following columns:
+
+ [1] "osm_id"                "name"                  "highway"
+ [4] "man_made"              "maxspeed"              "oneway"
+ [7] "bicycle"               "cycleway"              "cycleway_left"
+[10] "cycleway_right"        "cycleway_both"         "lanes"
+[13] "lanes_both_ways"       "lanes_forward"         "lanes_backward"
+[16] "lanes_bus"             "lanes_bus_conditional" "width"
+[19] "segregated"            "sidewalk"              "footway"
+[22] "service"               "surface"               "tracktype"
+[25] "smoothness"            "access"                "z_order"
+[28] "other_tags"            "geometry"
+
+
+# Example of Edinburgh
+```{r}
+library(zonebuilder)
+library(mapview)
+zone = zonebuilder::zb_zone("Edinburgh", n_circles = 1) |> sf::st_transform(crs = 27700)
+mm_data_zone = mm_data[sf::st_union(zone), , op = sf::st_intersects]
+osm_data_zone = osm_national[sf::st_union(zone), , op = sf::st_intersects]
+simplified_roads_zone = simplified_roads[sf::st_union(zone), , op = sf::st_intersects]
+
+mm_data_zone_2d = sf::st_zm(mm_data_zone)
+list_cols = sapply(mm_data_zone_2d, is.list)
+mm_data_zone_clean = mm_data_zone_2d[, !list_cols]
+
+mapview(simplified_roads_zone, color = "blue")  + mapview(osm_data_zone, color = "green") + mapview(mm_data_zone_clean, color = "red")
+```
+
+
+# Join averageWidth from MasterMap RoadLink data to simplified road network data
+
+```{r}
+library(stplanr)
+library(ggplot2)
+
+rnet_joined = stplanr::rnet_merge(simplified_roads_zone, mm_data_zone_clean, max_angle_diff = 15, dist = 15 funs = list(averageWidth  = sum))
+buffer = sf::st_buffer(rnet_joined, 20)
+summary(mm_data_zone_clean$averageWidth)
+summary(rnet_joined$averageWidth)
+mapview(rnet_joined) + mapview(mm_data_zone_clean, color = "red") 
+
+mm_data_zone_clean_f = mm_data_zone_clean |> dplyr::filter(gml_id%in% c("osgb4000000006400630", "osgb4000000006400630", "osgb4000000006400631", "osgb4000000006400631","osgb5000005304693961", "osgb4000000006400658"))
+simplified_roads_zone_f = simplified_roads_zone |> dplyr::filter(id %in% c("A1E134C9-85D1-4A94-A4B6-F08E8A863B17"))
+mapview(mm_data_zone_clean_f) + mapview(simplified_roads_zone_f)
+setwd("rnetmatch")
+getwd()
+devtools::load_all()
+library(rnetmatch)
+matched_df = rnet_match(simplified_roads_zone, mm_data_zone_clean, dist_tolerance = 20, angle_tolerance = 10, trees = "xy")
+
+sf::st_write(mm_data_zone_clean_f, "data/two_lines.geojson")
+sf::st_write(simplified_roads_zone_f, "data/one_line.geojson")
+```
+
