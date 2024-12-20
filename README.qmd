@@ -1,11 +1,20 @@
+---
+format: gfm
+execute: 
+  cache: true
+---
+
 # Simplified road network data: open_roads_scotland.geojson
 ```{r}
-simplified_roads = sf::st_read("data/open_roads_scotland.geojson") |> sf::st_transform(crs = 27700)
+data_dir = "../npt/inputdata/"
+simplified_roads = sf::st_read(file.path(data_dir, "open_roads_scotland.geojson")) |>
+  sf::st_transform(crs = 27700)
 ```
 
 # Scotland region and local authority boundaries
 ```{r}
-lads = sf::st_read("data/la_regions_scotland_bfe_simplified_2023.geojson")  |> sf::st_transform(crs = 27700)
+lads = sf::st_read(file.path(data_dir, "boundaries/la_regions_scotland_bfe_simplified_2023.geojson")) |>
+  sf::st_transform(crs = 27700)
 # [1] "LAD23CD"  "LAD23NM"  "Region"   "geometry"
 ```
 
@@ -32,17 +41,24 @@ Ordnance Survey Tab -> OS Digimap -> log in with organisation -> Download Data -
 
 The folloing code can be used to read the data as save as Rds file.
 ```{r}
+#| eval: false
 #remotes::install_github("acteng/mastermapr")
-directory = "data/MasterMap Highways Network_roads_5779840"
-system.time({
-  mm_data = mastermapr::mm_read(directory, pattern = "RoadLink", n_files = Inf) 
-})
+# directory = "data/MasterMap Highways Network_roads_5779840"
+# system.time({
+#   mm_data = mastermapr::mm_read(directory, pattern = "RoadLink", n_files = Inf) 
+# })
 saveRDS(mm_data, "data/mm_data_RoadLink.Rds")
 mm_data_2d = sf::st_zm(mm_data)
 list_cols = sapply(mm_data_2d, is.list)
 mm_data_list = mm_data_2d[, !list_cols]
 mm_data_scot = mm_data_list[st_union(lads), , op = st_intersects]
-sf::st_write(mm_data_scot, "data/mm_data_RoadLink_Scotland.geojson")
+# sf::st_write(mm_data_scot, "data/mm_data_RoadLink_Scotland.gpkg")
+# system("gh release create v1")
+# system("gh release upload v1 data/mm_data_RoadLink_Scotland.gpkg")
+```
+
+```{r}
+mm_data_scot = sf::read_sf("mm_data_RoadLink_Scotland.gpkg")
 ```
 
 The MasterMap Roadlink data contains the following columns:
@@ -76,7 +92,7 @@ The OSM data contains the following columns:
 library(zonebuilder)
 library(mapview)
 zone = zonebuilder::zb_zone("Edinburgh", n_circles = 1) |> sf::st_transform(crs = 27700)
-mm_data_zone = mm_data[sf::st_union(zone), , op = sf::st_intersects]
+mm_data_zone = mm_data_scot[sf::st_union(zone), , op = sf::st_intersects]
 osm_data_zone = osm_national[sf::st_union(zone), , op = sf::st_intersects]
 simplified_roads_zone = simplified_roads[sf::st_union(zone), , op = sf::st_intersects]
 
@@ -94,7 +110,7 @@ mapview(simplified_roads_zone, color = "blue")  + mapview(osm_data_zone, color =
 library(stplanr)
 library(ggplot2)
 
-rnet_joined = stplanr::rnet_merge(simplified_roads_zone, mm_data_zone_clean, max_angle_diff = 15, dist = 15 funs = list(averageWidth  = sum))
+rnet_joined = stplanr::rnet_merge(simplified_roads_zone, mm_data_zone_clean, max_angle_diff = 15, dist = 15, funs = list(averageWidth  = sum))
 buffer = sf::st_buffer(rnet_joined, 20)
 summary(mm_data_zone_clean$averageWidth)
 summary(rnet_joined$averageWidth)
@@ -103,13 +119,33 @@ mapview(rnet_joined) + mapview(mm_data_zone_clean, color = "red")
 mm_data_zone_clean_f = mm_data_zone_clean |> dplyr::filter(gml_id%in% c("osgb4000000006400630", "osgb4000000006400630", "osgb4000000006400631", "osgb4000000006400631","osgb5000005304693961", "osgb4000000006400658"))
 simplified_roads_zone_f = simplified_roads_zone |> dplyr::filter(id %in% c("A1E134C9-85D1-4A94-A4B6-F08E8A863B17"))
 mapview(mm_data_zone_clean_f) + mapview(simplified_roads_zone_f)
-setwd("rnetmatch")
-getwd()
-devtools::load_all()
-library(rnetmatch)
+```
+
+```{r}
+#| label: rnetmatch
+#| eval: false
+if (!dir.exists("rnetmatch")) {
+  system("gh repo clone rnetmatch")
+}
+# wd = setwd("rnetmatch/r")
+# getwd()
+# devtools::build()
+# # devtools::install() # fails
+# devtools::load_all()
+# setwd(wd)
+devtools::load_all("rnetmatch/r")
+
 matched_df = rnet_match(simplified_roads_zone, mm_data_zone_clean, dist_tolerance = 20, angle_tolerance = 10, trees = "xy")
 
-sf::st_write(mm_data_zone_clean_f, "data/two_lines.geojson")
-sf::st_write(simplified_roads_zone_f, "data/one_line.geojson")
+sf::st_write(mm_data_zone_clean_f, "two_lines.geojson")
+sf::st_write(simplified_roads_zone_f, "one_line.geojson")
+readr::write_csv(matched_df, "matched_df.csv")
+```
+
+```{r}
+matched_df = readr::read_csv("matched_df.csv")
+matched_df |>
+  head() |>
+  knitr::kable()
 ```
 
