@@ -1,6 +1,10 @@
+---
+format: gfm
+---
+
 # Simplified road network data: open_roads_scotland.geojson
 ```{r}
-simplified_roads = sf::st_read("data/open_roads_scotland.geojson") |> sf::st_transform(crs = 27700)
+simplified_roads = sf::st_read("../npt/inputdata/open_roads_scotland.geojson") |> sf::st_transform(crs = 27700)
 ```
 
 # Scotland region and local authority boundaries
