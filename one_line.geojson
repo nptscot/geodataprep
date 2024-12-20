@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "one_line",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::27700" } },
+"features": [
+{ "type": "Feature", "properties": { "id": "A1E134C9-85D1-4A94-A4B6-F08E8A863B17", "fictitious": false, "road_classification": "A Road", "road_function": "A Road", "form_of_way": "Collapsed Dual Carriageway", "road_classification_number": "A8", "name_1": "Princes Street", "name_1_lang": null, "name_2": null, "name_2_lang": null, "road_structure": null, "length": 73.0, "length_uom": "m", "loop": false, "primary_route": false, "trunk_road": false, "start_node": "9799FC5E-1AA8-436D-9A21-236F5387D474", "end_node": "994B9C78-383D-4362-A716-987C36A41C9C", "road_number_toid": "osgb4000000005314360", "road_name_toid": "osgb4000000006295345" }, "geometry": { "type": "LineString", "coordinates": [ [ 325577.270000000018626, 673926.810000000055879 ], [ 325612.200000000011642, 673937.439999999944121 ], [ 325647.14000000001397, 673948.069999999948777 ] ] } }
+]
+}

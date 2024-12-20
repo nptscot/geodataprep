@@ -119,22 +119,33 @@ mapview(rnet_joined) + mapview(mm_data_zone_clean, color = "red")
 mm_data_zone_clean_f = mm_data_zone_clean |> dplyr::filter(gml_id%in% c("osgb4000000006400630", "osgb4000000006400630", "osgb4000000006400631", "osgb4000000006400631","osgb5000005304693961", "osgb4000000006400658"))
 simplified_roads_zone_f = simplified_roads_zone |> dplyr::filter(id %in% c("A1E134C9-85D1-4A94-A4B6-F08E8A863B17"))
 mapview(mm_data_zone_clean_f) + mapview(simplified_roads_zone_f)
+```
 
 ```{r}
 #| label: rnetmatch
+#| eval: false
 if (!dir.exists("rnetmatch")) {
   system("gh repo clone rnetmatch")
 }
-wd = setwd("rnetmatch/r")
-getwd()
-devtools::build()
-devtools::load_all()
-library(rnetmatch)
-setwd()
+# wd = setwd("rnetmatch/r")
+# getwd()
+# devtools::build()
+# # devtools::install() # fails
+# devtools::load_all()
+# setwd(wd)
+devtools::load_all("rnetmatch/r")
 
 matched_df = rnet_match(simplified_roads_zone, mm_data_zone_clean, dist_tolerance = 20, angle_tolerance = 10, trees = "xy")
 
-sf::st_write(mm_data_zone_clean_f, "data/two_lines.geojson")
-sf::st_write(simplified_roads_zone_f, "data/one_line.geojson")
+sf::st_write(mm_data_zone_clean_f, "two_lines.geojson")
+sf::st_write(simplified_roads_zone_f, "one_line.geojson")
+readr::write_csv(matched_df, "matched_df.csv")
+```
+
+```{r}
+matched_df = readr::read_csv("matched_df.csv")
+matched_df |>
+  head() |>
+  knitr::kable()
 ```
 
