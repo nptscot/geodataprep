@@ -92,7 +92,7 @@ The OSM data contains the following columns:
 library(zonebuilder)
 library(mapview)
 zone = zonebuilder::zb_zone("Edinburgh", n_circles = 1) |> sf::st_transform(crs = 27700)
-mm_data_zone = mm_data[sf::st_union(zone), , op = sf::st_intersects]
+mm_data_zone = mm_data_scot[sf::st_union(zone), , op = sf::st_intersects]
 osm_data_zone = osm_national[sf::st_union(zone), , op = sf::st_intersects]
 simplified_roads_zone = simplified_roads[sf::st_union(zone), , op = sf::st_intersects]
 
@@ -110,7 +110,7 @@ mapview(simplified_roads_zone, color = "blue")  + mapview(osm_data_zone, color =
 library(stplanr)
 library(ggplot2)
 
-rnet_joined = stplanr::rnet_merge(simplified_roads_zone, mm_data_zone_clean, max_angle_diff = 15, dist = 15 funs = list(averageWidth  = sum))
+rnet_joined = stplanr::rnet_merge(simplified_roads_zone, mm_data_zone_clean, max_angle_diff = 15, dist = 15, funs = list(averageWidth  = sum))
 buffer = sf::st_buffer(rnet_joined, 20)
 summary(mm_data_zone_clean$averageWidth)
 summary(rnet_joined$averageWidth)
@@ -119,10 +119,19 @@ mapview(rnet_joined) + mapview(mm_data_zone_clean, color = "red")
 mm_data_zone_clean_f = mm_data_zone_clean |> dplyr::filter(gml_id%in% c("osgb4000000006400630", "osgb4000000006400630", "osgb4000000006400631", "osgb4000000006400631","osgb5000005304693961", "osgb4000000006400658"))
 simplified_roads_zone_f = simplified_roads_zone |> dplyr::filter(id %in% c("A1E134C9-85D1-4A94-A4B6-F08E8A863B17"))
 mapview(mm_data_zone_clean_f) + mapview(simplified_roads_zone_f)
-setwd("rnetmatch")
+
+```{r}
+#| label: rnetmatch
+if (!dir.exists("rnetmatch")) {
+  system("gh repo clone rnetmatch")
+}
+wd = setwd("rnetmatch/r")
 getwd()
+devtools::build()
 devtools::load_all()
 library(rnetmatch)
+setwd()
+
 matched_df = rnet_match(simplified_roads_zone, mm_data_zone_clean, dist_tolerance = 20, angle_tolerance = 10, trees = "xy")
 
 sf::st_write(mm_data_zone_clean_f, "data/two_lines.geojson")
