@@ -58,7 +58,7 @@ mm_data_scot = mm_data_list[st_union(lads), , op = st_intersects]
 ```
 
 ```{r}
-mm_data_scot = sf::read_sf("mm_data_RoadLink_Scotland.gpkg")
+mm_data_scot = sf::read_sf("data/mm_data_RoadLink_Scotland.gpkg")
 ```
 
 The MasterMap Roadlink data contains the following columns:
@@ -125,7 +125,7 @@ mapview(mm_data_zone_clean_f) + mapview(simplified_roads_zone_f)
 #| label: rnetmatch
 #| eval: false
 if (!dir.exists("rnetmatch")) {
-  system("gh repo clone rnetmatch")
+  system("gh repo clone nptscot/rnetmatch")
 }
 # wd = setwd("rnetmatch/r")
 # getwd()
