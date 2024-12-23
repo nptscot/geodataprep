@@ -152,8 +152,8 @@ matched_df |>
 # length weighted average width - using simple example
 
 ```{r}
-rnet_x = sf::read_sf("data/one_line.geojson")
-rnet_y = sf::read_sf("data/two_lines.geojson")
+rnet_x = sf::read_sf("data_raw/one_line.geojson")
+rnet_y = sf::read_sf("data_raw/two_lines.geojson")
 
 rnet_x$angle_x = stplanr::line_bearing(rnet_x, bidirectional = TRUE)
 rnet_y$angle_y = stplanr::line_bearing(rnet_y, bidirectional = TRUE)
@@ -193,9 +193,9 @@ library(purrr)
 library(zonebuilder)
 
 # Read and transform data
-rnet_x = sf::read_sf("data/simplified_network.geojson") |> 
+rnet_x = sf::read_sf("data_raw/simplified_network.geojson") |> 
   sf::st_transform(27700)
-rnet_y = sf::read_sf("data/mm_data_RoadLink_Scotland.gpkg") |> 
+rnet_y = sf::read_sf("data_raw/mm_data_RoadLink_Scotland.gpkg") |> 
   sf::st_transform(27700)
 
 # Correct geometry if necessary
