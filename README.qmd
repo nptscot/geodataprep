@@ -192,7 +192,7 @@ library(mapview)
 library(purrr)
 library(zonebuilder)
 
-# Read and transform data
+# Read data, can be download from https://github.com/nptscot/geodataprep/releases/edit/v1
 rnet_x = sf::read_sf("data_raw/simplified_network.geojson") |> 
   sf::st_transform(27700)
 rnet_y = sf::read_sf("data_raw/mm_data_RoadLink_Scotland.gpkg") |> 
