@@ -219,7 +219,7 @@ rnet_x_segments = stplanr::line_segment(rnet_x, segment_length = 10)
 rnet_x_segments$segment_width = NA_real_
 
 # select random 10 rows in rnet_x_segments to do a quick test
-# rnet_x_segments = rnet_x_segments[sample(nrow(rnet_x_segments), 10), ]
+rnet_x_segments = rnet_x_segments[sample(nrow(rnet_x_segments), 10), ]
 # Define constants
 buffer_distance = 20  # Buffer distance in meters
 max_angle_diff = 30   # Maximum angle difference in degrees
@@ -279,7 +279,7 @@ process_segment = function(current_segment, rnet_y, buffer_distance, max_angle_d
   # Avoid division by zero
   if (length_x > 0) {
     # Calculate averageWidth for the current segment
-    segment_width = total_length_y / length_x
+    segment_width = round(total_length_y / length_x , 2)
   } else {
     segment_width = NA_real_
     warning("Segment has zero length. segment_width set to NA.")
