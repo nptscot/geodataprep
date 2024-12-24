@@ -152,31 +152,31 @@ matched_df |>
 # length weighted average width - using simple example
 
 ```{r}
-rnet_x = sf::read_sf("data_raw/one_line.geojson")
-rnet_y = sf::read_sf("data_raw/two_lines.geojson")
+rnet_os = sf::read_sf("data_raw/one_line.geojson")
+rnet_mm = sf::read_sf("data_raw/two_lines.geojson")
+mapview::mapview(rnet_os, color = "red") + mapview::mapview(rnet_mm, color = "blue")
+rnet_os$angle_x = stplanr::line_bearing(rnet_os, bidirectional = TRUE)
+rnet_mm$angle_y = stplanr::line_bearing(rnet_mm, bidirectional = TRUE)
+rnet_mm = stplanr::line_segment(rnet_mm, segment_length = 10)
 
-rnet_x$angle_x = stplanr::line_bearing(rnet_x, bidirectional = TRUE)
-rnet_y$angle_y = stplanr::line_bearing(rnet_y, bidirectional = TRUE)
-rnet_y = stplanr::line_segment(rnet_y, segment_length = 10)
-
-angle_diff = abs(rnet_y$angle_y - rnet_x$angle_x)
+angle_diff = abs(rnet_mm$angle_y - rnet_os$angle_x)
 
 max_angle_diff = 30
-rnet_y_filtered = rnet_y |>
+rnet_mm_filtered = rnet_mm |>
   filter(angle_diff <= max_angle_diff)
 
-mapview::mapview(rnet_y, color = "red") + mapview::mapview(rnet_y_filtered, color = "blue")
+mapview::mapview(rnet_mm, color = "red") + mapview::mapview(rnet_mm_filtered, color = "blue")
 
-rnet_y_filtered = rnet_y_filtered |>
+rnet_mm_filtered = rnet_mm_filtered |>
   mutate(
     length_m = as.numeric(st_length(geometry)),          
     length_times_width = length_m * averageWidth        
   )
 
-total_length_times_width = sum(rnet_y_filtered$length_times_width, na.rm = TRUE)
+total_length_times_width = sum(rnet_mm_filtered$length_times_width, na.rm = TRUE)
 
-# Calculate total_length_x as the sum of lengths of all rnet_x_segments
-total_length_x = sum(as.numeric(st_length(rnet_x)), na.rm = TRUE)
+# Calculate total_length_x as the sum of lengths of all rnet_os_segments
+total_length_x = sum(as.numeric(st_length(rnet_os)), na.rm = TRUE)
 
 # Calculate totalAverageWidth
 totalAverageWidth = total_length_times_width / total_length_x
@@ -193,40 +193,40 @@ library(purrr)
 library(zonebuilder)
 
 # Read data, can be download from https://github.com/nptscot/geodataprep/releases/edit/v1
-rnet_x = sf::read_sf("data_raw/simplified_network.geojson") |> 
+rnet_os = sf::read_sf("data/simplified_network.geojson") |> 
   sf::st_transform(27700)
-rnet_y = sf::read_sf("data_raw/mm_data_RoadLink_Scotland.gpkg") |> 
+rnet_mm = sf::read_sf("data/mm_data_RoadLink_Scotland.gpkg") |> 
   sf::st_transform(27700)
 
 # Correct geometry if necessary
-rnet_y$geometry = rnet_y$geom
+rnet_mm$geometry = rnet_mm$geom
 
 # Define the zone
 zone = zonebuilder::zb_zone("Edinburgh", n_circles = 1) |> 
   sf::st_transform(crs = 27700)
 
-# Subset rnet_x and rnet_y based on the zone
-rnet_x = rnet_x[sf::st_union(zone), , op = sf::st_intersects]
-rnet_y = rnet_y[sf::st_union(zone), , op = sf::st_intersects]
+# Subset rnet_os and rnet_mm based on the zone
+rnet_os = rnet_os[sf::st_union(zone), , op = sf::st_intersects]
+rnet_mm = rnet_mm[sf::st_union(zone), , op = sf::st_intersects]
 
 
-rnet_x = stplanr::line_cast(rnet_x)
+rnet_os = stplanr::line_cast(rnet_os)
 
-# Segment rnet_x into 10-meter segments
-rnet_x_segments = stplanr::line_segment(rnet_x, segment_length = 10)
+# Segment rnet_os into 10-meter segments
+rnet_os_segments = stplanr::line_segment(rnet_os, segment_length = 10)
 
 # Initialize 'segment_width' column with NA
-rnet_x_segments$segment_width = NA_real_
+rnet_os_segments$segment_width = NA_real_
 
-# select random 10 rows in rnet_x_segments to do a quick test
-rnet_x_segments = rnet_x_segments[sample(nrow(rnet_x_segments), 10), ]
+# select random 10 rows in rnet_os_segments to do a quick test
+rnet_os_segments = rnet_os_segments[sample(nrow(rnet_os_segments), 10), ]
 # Define constants
 buffer_distance = 20  # Buffer distance in meters
 max_angle_diff = 30   # Maximum angle difference in degrees
 crs_proj = 27700       # Coordinate Reference System
 
 # Define a processing function
-process_segment = function(current_segment, rnet_y, buffer_distance, max_angle_diff, crs_proj) {
+process_segment = function(current_segment, rnet_mm, buffer_distance, max_angle_diff, crs_proj) {
   
   # Create buffer
   current_buffer = stplanr::geo_buffer(
@@ -237,17 +237,17 @@ process_segment = function(current_segment, rnet_y, buffer_distance, max_angle_d
     crs = crs_proj
   )
   
-  # Clip rnet_y by buffer
-  rnet_y_clip = st_intersection(current_buffer, rnet_y)
+  # Clip rnet_mm by buffer
+  rnet_mm_clip = st_intersection(current_buffer, rnet_mm)
 
   # Return NA if no intersection
-  if (nrow(rnet_y_clip) == 0) {
+  if (nrow(rnet_mm_clip) == 0) {
     return(NA_real_)
   }
   
   # Calculate angles
   angle_x = stplanr::line_bearing(current_segment, bidirectional = TRUE)
-  angle_y = stplanr::line_bearing(rnet_y_clip, bidirectional = TRUE)
+  angle_y = stplanr::line_bearing(rnet_mm_clip, bidirectional = TRUE)
   
   # Calculate absolute angle differences
   angle_diff = abs(angle_y - angle_x)
@@ -256,22 +256,22 @@ process_segment = function(current_segment, rnet_y, buffer_distance, max_angle_d
   angle_diff = ifelse(angle_diff > 180, 360 - angle_diff, angle_diff)
   
   # Filter based on angle difference
-  rnet_y_clip_filtered = rnet_y_clip %>%
+  rnet_mm_clip_filtered = rnet_mm_clip %>%
     mutate(angle_diff = angle_diff) %>%
     filter(angle_diff <= max_angle_diff)
 
   # Return NA if no segments pass the filter
-  if (nrow(rnet_y_clip_filtered) == 0) {
+  if (nrow(rnet_mm_clip_filtered) == 0) {
     return(NA_real_)
   }
   
   # Calculate length of each clipped y segment
-  rnet_y_clip_filtered = rnet_y_clip_filtered %>%
+  rnet_mm_clip_filtered = rnet_mm_clip_filtered %>%
     mutate(length_m = as.numeric(st_length(geometry)),
            length_times_width = length_m * averageWidth)
   
   # Compute total length of y segments within the buffer
-  total_length_y = sum(rnet_y_clip_filtered$length_times_width, na.rm = TRUE)
+  total_length_y = sum(rnet_mm_clip_filtered$length_times_width, na.rm = TRUE)
   
   # Calculate length of the current x segment
   length_x = as.numeric(st_length(current_segment), na.rm = TRUE)
@@ -290,11 +290,11 @@ process_segment = function(current_segment, rnet_y, buffer_distance, max_angle_d
 }
 
 
-rnet_x_segments$segment_width = map_dbl(
-  1:nrow(rnet_x_segments),
+rnet_os_segments$segment_width = map_dbl(
+  1:nrow(rnet_os_segments),
   ~ process_segment(
-      current_segment = rnet_x_segments[., ],
-      rnet_y = rnet_y,
+      current_segment = rnet_os_segments[., ],
+      rnet_mm = rnet_mm,
       buffer_distance = buffer_distance,
       max_angle_diff = max_angle_diff,
       crs_proj = crs_proj
@@ -302,7 +302,7 @@ rnet_x_segments$segment_width = map_dbl(
 )
 
 
-rnet_x_segments$segment_width[is.na(rnet_x_segments$segment_width)] = 0
+rnet_os_segments$segment_width[is.na(rnet_os_segments$segment_width)] = 0
 
-mapview(rnet_x_segments, zcol = "segment_width") + mapview(rnet_y, color = "red")
+mapview(rnet_os_segments, zcol = "segment_width") + mapview(rnet_mm, color = "red")
 ```
